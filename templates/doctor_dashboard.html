@@ -17,7 +17,7 @@
             <div class="ms-auto d-flex align-items-center">
                 <span class="badge bg-success me-3 py-2 px-3 shadow-sm" id="availabilityBadge"><i class="fas fa-circle ms-1 me-1 text-white" style="font-size:8px; vertical-align:middle;"></i> Available</span>
                 <span class="text-muted me-3 d-none d-md-block"><i class="fas fa-user-md me-1"></i> Doctor Portal</span>
-                <button class="btn btn-outline-danger btn-sm px-3 shadow-sm d-none d-md-inline-block me-2" onclick="logout()"><i class="fas fa-sign-out-alt me-1"></i> Logout</button>
+                <button class="btn btn-outline-danger btn-sm px-3 shadow-sm d-none d-md-inline-block me-2" onclick="logout('doctor')"><i class="fas fa-sign-out-alt me-1"></i> Logout</button>
                 <button class="btn btn-success d-md-none shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
                     <i class="fas fa-bars"></i>
                 </button>
@@ -38,7 +38,7 @@
                     <button class="sidebar-link mb-2 border-0 rounded text-start fw-bold bg-transparent" id="availability-tab" data-bs-toggle="tab" data-bs-target="#availability" type="button" onclick="closeSidebarMobile()"><i class="fas fa-user-clock me-2"></i> Status</button>
                     
                     <div class="mt-4 pt-4 border-top border-secondary border-opacity-25 d-md-none">
-                        <button class="btn btn-danger w-100 shadow-sm" onclick="logout()"><i class="fas fa-sign-out-alt me-2"></i> Logout</button>
+                        <button class="btn btn-danger w-100 shadow-sm" onclick="logout('doctor')"><i class="fas fa-sign-out-alt me-2"></i> Logout</button>
                     </div>
                 </div>
             </div>

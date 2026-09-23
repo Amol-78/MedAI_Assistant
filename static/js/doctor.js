@@ -1,6 +1,3 @@
-const token = localStorage.getItem('access_token');
-if (!token) window.location.href = '/login';
-
 function parseJwt(token) {
     try {
         return JSON.parse(atob(token.split('.')[1]));
@@ -8,6 +5,33 @@ function parseJwt(token) {
         return null;
     }
 }
+
+function getDoctorToken() {
+    let t = sessionStorage.getItem('doctor_access_token') || localStorage.getItem('doctor_access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'doctor') return t;
+            } catch (e) {}
+        }
+    }
+    t = localStorage.getItem('access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'doctor') return t;
+            } catch (e) {}
+        }
+    }
+    return null;
+}
+
+const token = getDoctorToken();
+if (!token) window.location.href = '/login?role=doctor';
 
 // Initialize Real-Time WebSocket Notifications
 const socket = typeof io !== 'undefined' ? io() : null;
@@ -79,7 +103,7 @@ async function loadReports() {
         const res = await fetch('/doctor/reports', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.status === 401 || res.status === 422) { logout(); return; }
+        if (res.status === 401 || res.status === 422 || res.status === 403) { logout('doctor'); return; }
         if(!res.ok) throw new Error("Failed to load");
         const reports = await res.json();
         
@@ -134,7 +158,7 @@ async function loadAppointments() {
     list.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin text-success fa-2x"></i></div>';
     try {
         const res = await fetch('/doctor/appointments', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.status === 401 || res.status === 422) { logout(); return; }
+        if (res.status === 401 || res.status === 422 || res.status === 403) { logout('doctor'); return; }
         const apps = await res.json();
         if(apps.length === 0) {
             list.innerHTML = '<div class="p-4 text-center text-muted">No appointments found.</div>';

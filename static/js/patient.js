@@ -1,6 +1,3 @@
-const token = localStorage.getItem('access_token');
-if (!token) window.location.href = '/login';
-
 function parseJwt(token) {
     try {
         return JSON.parse(atob(token.split('.')[1]));
@@ -8,6 +5,33 @@ function parseJwt(token) {
         return null;
     }
 }
+
+function getPatientToken() {
+    let t = sessionStorage.getItem('patient_access_token') || localStorage.getItem('patient_access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'patient') return t;
+            } catch (e) {}
+        }
+    }
+    t = localStorage.getItem('access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'patient') return t;
+            } catch (e) {}
+        }
+    }
+    return null;
+}
+
+const token = getPatientToken();
+if (!token) window.location.href = '/login?role=patient';
 
 // Initialize Real-Time WebSocket Notifications
 const socket = typeof io !== 'undefined' ? io() : null;
@@ -575,7 +599,7 @@ async function loadHistory() {
         const res = await fetch('/patient/history', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.status === 401 || res.status === 422) { logout(); return; }
+        if (res.status === 401 || res.status === 422 || res.status === 403) { logout('patient'); return; }
         if (!res.ok) throw new Error("Failed to load");
         const reports = await res.json();
         let html = '<h3 class="mb-4 text-primary"><i class="fas fa-history me-2"></i> Medical History</h3>';
@@ -668,7 +692,7 @@ async function loadAppointments() {
         const res = await fetch('/patient/appointments', {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.status === 401 || res.status === 422) { logout(); return; }
+        if (res.status === 401 || res.status === 422 || res.status === 403) { logout('patient'); return; }
         if (!res.ok) throw new Error("Failed");
         const apps = await res.json();
         let html = '<h3 class="mb-4 text-primary"><i class="fas fa-calendar-check me-2"></i> Appointments</h3>';

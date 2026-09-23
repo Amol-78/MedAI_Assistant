@@ -1,5 +1,37 @@
-const token = localStorage.getItem('access_token');
-if (!token) window.location.href = '/login';
+function parseJwt(token) {
+    try {
+        return JSON.parse(atob(token.split('.')[1]));
+    } catch (e) {
+        return null;
+    }
+}
+
+function getAdminToken() {
+    let t = sessionStorage.getItem('admin_access_token') || localStorage.getItem('admin_access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'admin') return t;
+            } catch (e) {}
+        }
+    }
+    t = localStorage.getItem('access_token');
+    if (t) {
+        const decoded = parseJwt(t);
+        if (decoded && decoded.sub) {
+            try {
+                const identity = typeof decoded.sub === 'string' ? JSON.parse(decoded.sub) : decoded.sub;
+                if (identity.role === 'admin') return t;
+            } catch (e) {}
+        }
+    }
+    return null;
+}
+
+const token = getAdminToken();
+if (!token) window.location.href = '/login?role=admin';
 
 async function loadDoctors() {
     try {

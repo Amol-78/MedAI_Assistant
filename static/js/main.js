@@ -23,6 +23,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const result = await res.json();
                 if (res.ok) {
+                    localStorage.setItem(`${result.role}_access_token`, result.access_token);
+                    sessionStorage.setItem(`${result.role}_access_token`, result.access_token);
                     localStorage.setItem('access_token', result.access_token);
                     localStorage.setItem('role', result.role);
                     if (result.is_super_admin) {
@@ -65,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await res.json();
                 if (res.ok) {
                     alert('Registration successful! Redirecting to login...');
-                    window.location.href = '/login';
+                    window.location.href = '/login?role=patient';
                 } else {
                     alert(result.msg || 'Registration failed');
                     btn.innerHTML = originalText;
@@ -82,9 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Doctor Registration Form Handler (Admin Access Only)
     const doctorForm = document.getElementById('doctorForm');
     if (doctorForm) {
-        const token = localStorage.getItem('access_token');
+        const token = localStorage.getItem('admin_access_token') || localStorage.getItem('access_token');
         if (!token) {
-            window.location.href = '/login';
+            window.location.href = '/login?role=admin';
         }
 
         doctorForm.addEventListener('submit', async (e) => {
@@ -126,7 +128,19 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Generic logout function used across multiple pages
-function logout() {
-    localStorage.clear();
-    window.location.href = '/login';
+function logout(role) {
+    if (role) {
+        localStorage.removeItem(`${role}_access_token`);
+        sessionStorage.removeItem(`${role}_access_token`);
+        if (localStorage.getItem('role') === role) {
+            localStorage.removeItem('access_token');
+            localStorage.removeItem('role');
+            localStorage.removeItem('is_super_admin');
+        }
+        window.location.href = `/login?role=${role}`;
+    } else {
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = '/login';
+    }
 }
