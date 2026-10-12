@@ -121,7 +121,8 @@ def incoming_call():
     if call:
         return jsonify({
             'call_id': call.call_id,
-            'patient_name': call.patient.name,
+            'patient_name': call.patient.name if call.patient else 'A waiting patient',
+            'call_type': getattr(call, 'call_type', 'video'),
             'status': 'ringing'
         }), 200
     return jsonify({'status': 'none'}), 200
@@ -146,15 +147,32 @@ def accept_call(call_id):
 def reject_call(call_id):
     identity = json.loads(get_jwt_identity())
     if identity['role'] != 'doctor': return jsonify({'msg': 'Unauthorized'}), 403
-    from models import EmergencyCall
+    from models import EmergencyCall, Patient, Doctor, Transaction
     call = EmergencyCall.query.filter_by(call_id=call_id, doctor_id=identity['id']).first_or_404()
     call.status = 'rejected'
+    
+    if getattr(call, 'fee_paid', 0) and call.fee_paid > 0:
+        patient = Patient.query.get(call.patient_id)
+        doctor = Doctor.query.get(identity['id'])
+        if patient:
+            patient.wallet_balance = (patient.wallet_balance or 0.0) + call.fee_paid
+            if doctor:
+                doctor.total_earnings = max(0.0, (doctor.total_earnings or 0.0) - call.fee_paid)
+            ref_tx = Transaction(
+                patient_id=patient.patient_id,
+                amount=call.fee_paid,
+                transaction_type='CREDIT',
+                description=f"Refund: Call declined by Dr. {doctor.name if doctor else 'Doctor'}"
+            )
+            db.session.add(ref_tx)
+        call.fee_paid = 0.0
+
     db.session.commit()
     
     from extensions import socketio
     socketio.emit('call_answered', {'callId': call_id, 'status': 'rejected'}, room=str(call.patient_id))
     
-    return jsonify({'msg': 'Call rejected'}), 200
+    return jsonify({'msg': 'Call rejected and patient refunded'}), 200
 
 @doctor_bp.route('/initiate_call', methods=['POST'])
 @jwt_required()
@@ -219,3 +237,22 @@ def get_profile_stats():
         'average_rating': round(avg_rating, 1),
         'feedbacks': fb_list
     }), 200
+
+@doctor_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_doctor():
+    identity = json.loads(get_jwt_identity())
+    if identity['role'] != 'doctor': 
+        return jsonify({'msg': 'Unauthorized'}), 403
+    doctor = Doctor.query.get_or_404(identity['id'])
+    return jsonify({
+        'doctor_id': doctor.doctor_id,
+        'name': doctor.name,
+        'email': doctor.email,
+        'phone': doctor.phone,
+        'specialization': doctor.specialization,
+        'education': doctor.education,
+        'experience_years': doctor.experience_years,
+        'profile_picture': doctor.profile_picture,
+        'available': doctor.available
+    }), 200

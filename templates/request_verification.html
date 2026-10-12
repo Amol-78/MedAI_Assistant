@@ -36,101 +36,131 @@
                 </div>
 
                 <!-- Form Card -->
-                <div class="glass-card p-4 shadow-sm" style="border-radius: 15px;">
-                    <h3 class="text-center text-primary mb-4 fw-bold">Request Access</h3>
-                    <form id="doctorVerificationForm">
-                        <div class="row mb-3">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label class="form-label text-muted fw-bold">Full Name</label>
+                <div class="glass-card p-4 p-md-5 shadow-sm" style="border-radius: 15px;">
+                    <h3 class="text-center text-primary mb-2 fw-bold"><i class="fas fa-user-md me-2"></i>Request Access</h3>
+                    <p class="text-center text-muted small mb-4">Submit your professional details for administrative verification</p>
+                    
+                    <form id="doctorVerificationForm" enctype="multipart/form-data">
+                        <!-- Profile Picture Upload with Live Preview -->
+                        <div class="text-center mb-4 pb-2 border-bottom">
+                            <label class="form-label text-muted fw-bold d-block mb-2">Doctor Profile Picture <span class="text-danger">*</span></label>
+                            <div class="position-relative d-inline-block">
+                                <img id="requestPicPreview" src="/static/img/default-doctor.png" onerror="this.src='https://cdn-icons-png.flaticon.com/512/3774/3774299.png'" alt="Doctor Avatar Preview" class="rounded-circle shadow-sm border border-3 border-primary" style="width: 100px; height: 100px; object-fit: cover; background: #f8fafc;">
+                                <label for="requestProfilePicInput" class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle shadow p-2" style="cursor: pointer; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;" title="Upload Profile Picture">
+                                    <i class="fas fa-camera small"></i>
+                                </label>
+                            </div>
+                            <div class="mt-2">
+                                <input type="file" id="requestProfilePicInput" name="profile_picture" accept="image/*" class="d-none" required onchange="previewDocAvatar(this, 'requestPicPreview')">
+                                <small class="text-muted d-block"><i class="fas fa-info-circle me-1"></i> Click camera icon or <a href="javascript:void(0)" onclick="document.getElementById('requestProfilePicInput').click()" class="text-primary text-decoration-none fw-bold">Browse</a> photo (PNG, JPG, max 5MB)</small>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label text-muted fw-bold">Full Name <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-white"><i
-                                            class="fas fa-user text-muted"></i></span>
-                                    <input type="text" class="form-control" name="name" placeholder="Dr. John Doe"
-                                        required>
+                                    <span class="input-group-text bg-white"><i class="fas fa-user-md text-muted"></i></span>
+                                    <input type="text" class="form-control" name="name" placeholder="Dr. Jane Smith" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label text-muted fw-bold">Age <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" name="age" min="20" max="90" placeholder="e.g. 45" required>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Gender <span class="text-danger">*</span></label>
+                                <select class="form-select" name="gender" required>
+                                    <option value="" disabled selected>Select gender</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Education Qualification <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-graduation-cap text-muted"></i></span>
+                                    <input type="text" class="form-control" name="education" placeholder="e.g. MBBS, MD" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Years of Experience <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-briefcase text-muted"></i></span>
+                                    <input type="number" class="form-control" name="experience_years" placeholder="e.g. 10" min="0" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold">Specialization</label>
+                                <label class="form-label text-muted fw-bold">Medical Specialization <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-white"><i
-                                            class="fas fa-stethoscope text-muted"></i></span>
+                                    <span class="input-group-text bg-white"><i class="fas fa-stethoscope text-muted"></i></span>
                                     <select class="form-select border-start-0" name="specialization" required>
-                                        <option value="" disabled selected>Select Specialization</option>
-                                        <option>Cardiologist</option>
-                                        <option>Neurologist</option>
-                                        <option>Dermatologist</option>
-                                        <option>Orthopedic</option>
-                                        <option>General Physician</option>
-                                        <option>Pediatrician</option>
-                                        <option>ENT Specialist</option>
-                                        <option>Gastroenterologist</option>
-                                        <option>Pulmonologist</option>
-                                        <option>Endocrinologist</option>
-                                        <option>Psychiatrist</option>
-                                        <option>Ophthalmologist</option>
-                                        <option>Gynecologist</option>
-                                        <option>Urologist</option>
-                                        <option>Oncologist</option>
+                                        <option value="" disabled selected>Select department</option>
+                                        <option value="Cardiologist">Cardiologist (Heart)</option>
+                                        <option value="Neurologist">Neurologist (Brain & Nerves)</option>
+                                        <option value="Dermatologist">Dermatologist (Skin)</option>
+                                        <option value="Orthopedic">Orthopedic (Bones & Joints)</option>
+                                        <option value="General Physician">General Physician (Primary Care)</option>
+                                        <option value="Pediatrician">Pediatrician (Children)</option>
+                                        <option value="ENT Specialist">ENT Specialist (Ear, Nose, Throat)</option>
+                                        <option value="Gastroenterologist">Gastroenterologist (Digestive System)</option>
+                                        <option value="Pulmonologist">Pulmonologist (Lungs & Respiratory)</option>
+                                        <option value="Endocrinologist">Endocrinologist (Hormones & Thyroid)</option>
+                                        <option value="Psychiatrist">Psychiatrist (Mental Health)</option>
+                                        <option value="Ophthalmologist">Ophthalmologist (Eyes & Vision)</option>
+                                        <option value="Gynecologist">Gynecologist (Women's Health)</option>
+                                        <option value="Urologist">Urologist (Urinary & Renal)</option>
+                                        <option value="Oncologist">Oncologist (Cancer)</option>
+                                        <option value="Dentist">Dentist (Dental Care)</option>
                                     </select>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row mb-3">
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label class="form-label text-muted fw-bold">Email Address</label>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Online Treatment Fee (₹) <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-white"><i
-                                            class="fas fa-envelope text-muted"></i></span>
-                                    <input type="email" class="form-control" name="email"
-                                        placeholder="email@medical.com" required>
+                                    <span class="input-group-text bg-white"><i class="fas fa-rupee-sign text-muted"></i></span>
+                                    <input type="number" class="form-control border-start-0" name="online_treatment_fee" id="reqDocFeeInput" min="0" placeholder="e.g. 300" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold">Phone Number</label>
+                                <label class="form-label text-muted fw-bold">Email Address <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <span class="input-group-text bg-white"><i
-                                            class="fas fa-phone text-muted"></i></span>
-                                    <input type="tel" class="form-control" name="phone" placeholder="+1 234 567 8900"
-                                        required>
+                                    <span class="input-group-text bg-white"><i class="fas fa-envelope text-muted"></i></span>
+                                    <input type="email" class="form-control border-start-0" name="email" placeholder="doctor@hospital.com" required>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label text-muted fw-bold">Education / Degrees</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i
-                                        class="fas fa-graduation-cap text-muted"></i></span>
-                                <input type="text" class="form-control" name="education" placeholder="MBBS, MD"
-                                    required>
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Contact Number <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-phone text-muted"></i></span>
+                                    <input type="tel" class="form-control border-start-0" name="phone" placeholder="+1 (555) 000-0000" required>
+                                </div>
                             </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label text-muted fw-bold">Years of Experience</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i
-                                        class="fas fa-briefcase text-muted"></i></span>
-                                <input type="number" class="form-control" name="experience_years" placeholder="e.g. 5"
-                                    required min="0">
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label text-muted fw-bold">Online Treatment Fee</label>
-                            <div class="input-group">
-                                <span class="input-group-text bg-white"><i
-                                        class="fas fa-rupee-sign text-muted"></i></span>
-                                <input type="number" class="form-control" name="online_treatment_fee"
-                                    placeholder="e.g. 500" required min="0">
+                            <div class="col-md-6">
+                                <label class="form-label text-muted fw-bold">Account Password <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i class="fas fa-key text-muted"></i></span>
+                                    <input type="password" class="form-control border-start-0" name="password" placeholder="Create your login password" required>
+                                </div>
                             </div>
                         </div>
 
                         <div id="requestAlert" class="alert d-none"></div>
 
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold shadow-sm"
-                            style="border-radius: 8px;">
+                        <button type="submit" class="btn btn-primary w-100 py-3 fw-bold shadow-sm" style="border-radius: 8px;">
                             <i class="fas fa-paper-plane me-2"></i> Submit Verification Request
                         </button>
                     </form>
@@ -140,21 +170,29 @@
     </div>
 
     <script>
+        function previewDocAvatar(input, imgId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(imgId).src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         document.getElementById('doctorVerificationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const btn = e.target.querySelector('button');
+            const btn = e.target.querySelector('button[type="submit"]');
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Submitting...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Submitting Request...';
             btn.disabled = true;
 
             const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
 
             try {
                 const res = await fetch('/auth/request_doctor', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
+                    body: formData
                 });
                 const result = await res.json();
 
@@ -164,11 +202,12 @@
 
                 if (res.ok) {
                     e.target.reset();
+                    document.getElementById('requestPicPreview').src = 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png';
                 }
             } catch (err) {
                 const alertBox = document.getElementById('requestAlert');
                 alertBox.className = 'alert mt-3 alert-danger d-block';
-                alertBox.innerHTML = 'An connection error occurred.';
+                alertBox.innerHTML = 'A connection error occurred. Please try again.';
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;

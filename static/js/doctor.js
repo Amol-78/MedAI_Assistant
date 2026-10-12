@@ -72,7 +72,7 @@ if (socket) {
     // Real-Time Incoming Call handler
     socket.on('incoming_call', (data) => {
         if (data.callId) {
-            showIncomingCallModal(data.callId, data.patientName || "A waiting patient");
+            showIncomingCallModal(data.callId, data.patientName || "A waiting patient", data.callType || 'video');
         }
     });
 
@@ -80,7 +80,7 @@ if (socket) {
     socket.on('call_answered', (data) => {
         if (data.status === 'accepted' && data.callId === currentDoctorCallId) {
             document.getElementById('doctorCallWaiting')?.remove();
-            startDoctorJitsi('MedAI-Room-' + data.callId);
+            startDoctorJitsi('MedAI-Room-' + data.callId, 'video');
         } else if (data.status === 'rejected' && data.callId === currentDoctorCallId) {
             document.getElementById('doctorCallWaiting')?.remove();
             currentDoctorCallId = null;
@@ -88,12 +88,39 @@ if (socket) {
             const t = document.createElement('div');
             t.className = 'position-fixed bottom-0 end-0 p-3';
             t.style.zIndex = '9999';
-            t.innerHTML = `<div class="toast show align-items-center text-white bg-danger border-0 rounded-3"><div class="d-flex p-2"><div class="toast-body fw-bold"><i class="fas fa-times me-1"></i> Patient declined the video call.</div></div></div>`;
+            t.innerHTML = `<div class="toast show align-items-center text-white bg-danger border-0 rounded-3"><div class="d-flex p-2"><div class="toast-body fw-bold"><i class="fas fa-times me-1"></i> Patient declined the call.</div></div></div>`;
             document.body.appendChild(t);
             setTimeout(() => t.remove(), 5000);
         }
     });
 }
+
+// Load logged-in doctor profile details for corner and sidebar
+async function loadDoctorMe() {
+    try {
+        const res = await fetch('/doctor/me', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) return;
+        const doc = await res.json();
+        
+        const avatarSrc = doc.profile_picture ? `/static/uploads/${doc.profile_picture}` : 'https://cdn-icons-png.flaticon.com/512/3774/3774299.png';
+        const docName = doc.name.startsWith('Dr.') ? doc.name : `Dr. ${doc.name}`;
+        
+        const cornerAvatar = document.getElementById('doctorCornerAvatar');
+        const cornerName = document.getElementById('doctorCornerName');
+        const cornerSpec = document.getElementById('doctorCornerSpec');
+        if (cornerAvatar) cornerAvatar.src = avatarSrc;
+        if (cornerName) cornerName.innerText = docName;
+        if (cornerSpec) cornerSpec.innerText = doc.specialization;
+        
+        const sideAvatar = document.getElementById('doctorSidebarAvatar');
+        const sideName = document.getElementById('doctorSidebarName');
+        const sideSpec = document.getElementById('doctorSidebarSpec');
+        if (sideAvatar) sideAvatar.src = avatarSrc;
+        if (sideName) sideName.innerText = docName;
+        if (sideSpec) sideSpec.innerText = doc.specialization;
+    } catch(e) { }
+}
+loadDoctorMe();
 
 
 async function loadReports() {
@@ -344,7 +371,7 @@ async function checkIncomingCalls() {
         
         if (data.status === 'ringing' && currentRingingCall !== data.call_id) {
             currentRingingCall = data.call_id;
-            showIncomingCallModal(data.call_id, data.patient_name);
+            showIncomingCallModal(data.call_id, data.patient_name, data.call_type || 'video');
         } else if (data.status === 'none' && currentRingingCall !== null) {
             hideIncomingCallModal();
             currentRingingCall = null;
@@ -352,7 +379,7 @@ async function checkIncomingCalls() {
     } catch(e) { }
 }
 
-function showIncomingCallModal(callId, patientName) {
+function showIncomingCallModal(callId, patientName, callType = 'video') {
     let modal = document.getElementById('incomingCallModal');
     if (!modal) {
         modal = document.createElement('div');
@@ -360,13 +387,19 @@ function showIncomingCallModal(callId, patientName) {
         modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;';
         document.body.appendChild(modal);
     }
+    const isAudio = (callType === 'audio');
+    const borderColor = isAudio ? '#10b981' : '#dc3545';
+    const iconClass = isAudio ? 'fa-phone-alt text-success' : 'fa-video text-danger';
+    const titleText = isAudio ? 'Incoming Audio Call!' : 'Incoming Video Call!';
+    const typeLabel = isAudio ? 'direct audio consultation' : 'direct video consultation';
+
     modal.innerHTML = `
-        <div class="bg-white p-5 text-center shadow-lg" style="max-width: 500px; width: 90%; border-radius: 12px; border-top: 6px solid #dc3545;">
-            <div class="spinner-grow text-danger mb-4" style="width: 4rem; height: 4rem;" role="status"></div>
-            <h2 class="text-danger fw-bold mb-3">Incoming Video Call!</h2>
-            <p class="text-muted fs-5 mb-4">Patient <strong>${patientName}</strong> is requesting an immediate emergency video consultation.</p>
+        <div class="bg-white p-5 text-center shadow-lg" style="max-width: 500px; width: 90%; border-radius: 16px; border-top: 6px solid ${borderColor};">
+            <div class="spinner-grow ${isAudio ? 'text-success' : 'text-danger'} mb-4" style="width: 4rem; height: 4rem;" role="status"></div>
+            <h2 class="fw-bold mb-3 ${isAudio ? 'text-success' : 'text-danger'}"><i class="fas ${iconClass} me-2"></i> ${titleText}</h2>
+            <p class="text-muted fs-5 mb-4">Patient <strong>${patientName}</strong> is calling you for an immediate <strong>${typeLabel}</strong>.</p>
             <div class="d-flex justify-content-center gap-3">
-                <button class="btn btn-success btn-lg px-4 shadow-sm fw-bold" style="border-radius: 8px;" onclick="acceptCall(${callId})"><i class="fas fa-video me-2"></i> Accept</button>
+                <button class="btn btn-success btn-lg px-4 shadow-sm fw-bold" style="border-radius: 8px;" onclick="acceptCall(${callId}, '${callType}')"><i class="fas ${isAudio ? 'fa-phone' : 'fa-video'} me-2"></i> Accept Call</button>
                 <button class="btn btn-danger btn-lg px-4 shadow-sm fw-bold" style="border-radius: 8px;" onclick="rejectCall(${callId})"><i class="fas fa-phone-slash me-2"></i> Decline</button>
             </div>
         </div>
@@ -378,11 +411,11 @@ function hideIncomingCallModal() {
     if (modal) modal.remove();
 }
 
-async function acceptCall(callId) {
+async function acceptCall(callId, callType = 'video') {
     hideIncomingCallModal();
     try {
         await fetch(`/doctor/accept_call/${callId}`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
-        startDoctorJitsi('MedAI-Room-' + callId);
+        startDoctorJitsi('MedAI-Room-' + callId, callType);
     } catch(e) { alert("Error accepting call"); }
 }
 
@@ -394,13 +427,14 @@ async function rejectCall(callId) {
     } catch(e) { }
 }
 
-function startDoctorJitsi(roomName) {
+function startDoctorJitsi(roomName, callType = 'video') {
     const list = document.getElementById('reportsList');
+    const isAudio = (callType === 'audio');
     list.innerHTML = `
         <div class="card shadow-lg border-0 mb-4 bg-dark text-white rounded">
-            <div class="card-header border-0 bg-danger d-flex justify-content-between align-items-center py-3">
-                <h5 class="mb-0 fw-bold text-white"><i class="fas fa-video me-2"></i> Live Emergency Consultation</h5>
-                <button class="btn btn-light btn-sm shadow-sm fw-bold text-danger px-3 py-2" style="border-radius: 8px;" onclick="endDoctorJitsi()">
+            <div class="card-header border-0 ${isAudio ? 'bg-success' : 'bg-danger'} d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0 fw-bold text-white"><i class="fas ${isAudio ? 'fa-phone-alt' : 'fa-video'} me-2"></i> Live Consultation (${isAudio ? 'Audio Only' : 'Video'})</h5>
+                <button class="btn btn-light btn-sm shadow-sm fw-bold ${isAudio ? 'text-success' : 'text-danger'} px-3 py-2" style="border-radius: 8px;" onclick="endDoctorJitsi()">
                     <i class="fas fa-phone-slash me-1"></i> End Call
                 </button>
             </div>
@@ -413,7 +447,8 @@ function startDoctorJitsi(roomName) {
         width: '100%',
         height: '100%',
         parentNode: document.getElementById('jitsi-container'),
-        userInfo: { displayName: 'MedAI Doctor' }
+        userInfo: { displayName: 'MedAI Doctor' },
+        configOverwrite: isAudio ? { startAudioOnly: true, startWithVideoMuted: true } : {}
     };
     doctorJitsiApi = new JitsiMeetExternalAPI(domain, options);
 }

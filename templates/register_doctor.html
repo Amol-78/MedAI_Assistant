@@ -41,10 +41,25 @@
                         </div>
                     </div>
 
-                    <form id="doctorForm">
+                    <form id="doctorForm" enctype="multipart/form-data">
                         <div class="row g-4">
+                            <!-- Profile Picture Upload with Live Preview -->
+                            <div class="col-12 text-center pb-3 border-bottom">
+                                <label class="form-label text-muted fw-bold d-block mb-2">Doctor Profile Picture <span class="text-danger">*</span></label>
+                                <div class="position-relative d-inline-block">
+                                    <img id="adminDocPicPreview" src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" alt="Doctor Avatar Preview" class="rounded-circle shadow-sm border border-3 border-success" style="width: 100px; height: 100px; object-fit: cover; background: #f8fafc;">
+                                    <label for="adminProfilePicInput" class="position-absolute bottom-0 end-0 bg-success text-white rounded-circle shadow p-2" style="cursor: pointer; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center;" title="Upload Profile Picture">
+                                        <i class="fas fa-camera small"></i>
+                                    </label>
+                                </div>
+                                <div class="mt-2">
+                                    <input type="file" id="adminProfilePicInput" name="profile_picture" accept="image/*" class="d-none" required onchange="previewDocAvatar(this, 'adminDocPicPreview')">
+                                    <small class="text-muted d-block"><i class="fas fa-info-circle me-1"></i> Click camera or <a href="javascript:void(0)" onclick="document.getElementById('adminProfilePicInput').click()" class="text-success text-decoration-none fw-bold">Browse</a> photo (PNG, JPG, max 5MB)</small>
+                                </div>
+                            </div>
+
                             <div class="col-md-6 col-lg-8">
-                                <label class="form-label text-muted fw-bold">Full Name</label>
+                                <label class="form-label text-muted fw-bold">Full Name <span class="text-danger">*</span></label>
                                 <div class="input-group">
                                     <span class="input-group-text bg-white"><i
                                             class="fas fa-user-md text-muted"></i></span>
@@ -53,13 +68,13 @@
                                 </div>
                             </div>
                             <div class="col-md-6 col-lg-4">
-                                <label class="form-label text-muted fw-bold">Age</label>
+                                <label class="form-label text-muted fw-bold">Age <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control form-control-lg" name="age" min="20" max="90"
                                     placeholder="e.g. 45" required>
                             </div>
 
                             <div class="col-md-6">
-                                <label class="form-label text-muted fw-bold">Gender</label>
+                                <label class="form-label text-muted fw-bold">Gender <span class="text-danger">*</span></label>
                                 <select class="form-select form-control-lg" name="gender" required>
                                     <option value="" disabled selected>Select gender</option>
                                     <option value="Male">Male</option>
@@ -119,7 +134,7 @@
                                     <span class="input-group-text bg-white"><i
                                             class="fas fa-rupee-sign text-muted"></i></span>
                                     <input type="number" class="form-control form-control-lg border-start-0"
-                                        name="online_treatment_fee" min="0" placeholder="e.g. 500" required>
+                                        name="online_treatment_fee" id="adminDocFeeInput" min="0" placeholder="e.g. 300" required>
                                 </div>
                             </div>
 
@@ -166,6 +181,17 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function previewDocAvatar(input, imgId) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById(imgId).src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+    </script>
     <script src="/static/js/main.js"></script>
 </body>
 

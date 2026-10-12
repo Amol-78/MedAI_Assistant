@@ -354,7 +354,8 @@ def get_available_doctors():
         'name': d.name,
         'specialization': d.specialization,
         'phone': d.phone,
-        'email': d.email
+        'email': d.email,
+        'profile_picture': d.profile_picture
     } for d in doctors]), 200
 
 @patient_bp.route('/doctors_for_report/<int:report_id>', methods=['GET'])
@@ -376,7 +377,8 @@ def doctors_for_report(report_id):
         'name': d.name,
         'specialization': d.specialization,
         'experience_years': d.experience_years,
-        'online_treatment_fee': d.online_treatment_fee
+        'online_treatment_fee': d.online_treatment_fee,
+        'profile_picture': d.profile_picture
     } for d in doctors]), 200
 
 @patient_bp.route('/assign_report_doctor/<int:report_id>', methods=['POST'])
@@ -451,7 +453,9 @@ def search_doctors():
             'experience_years': d.experience_years,
             'online_treatment_fee': d.online_treatment_fee,
             'rating': round(avg, 1),
-            'total_reviews': len(feedbacks)
+            'total_reviews': len(feedbacks),
+            'profile_picture': d.profile_picture,
+            'phone': d.phone
         })
     return jsonify(results), 200
 
@@ -478,7 +482,9 @@ def doctor_profile(doctor_id):
         'available': doctor.available,
         'rating': round(avg, 1),
         'total_reviews': len(feedbacks),
-        'feedbacks': feedback_data
+        'feedbacks': feedback_data,
+        'profile_picture': doctor.profile_picture,
+        'phone': doctor.phone
     }), 200
 
 @patient_bp.route('/submit_feedback', methods=['POST'])
@@ -533,31 +539,112 @@ def submit_feedback():
 def initiate_call():
     identity = json.loads(get_jwt_identity())
     if identity['role'] != 'patient': return jsonify({'msg': 'Unauthorized'}), 403
-    data = request.get_json()
+    data = request.get_json() or {}
     doctor_id = data.get('doctor_id')
+    call_type = data.get('call_type', 'video') # 'video' or 'audio'
     if not doctor_id: return jsonify({'msg': 'Doctor ID required'}), 400
     
-    from models import EmergencyCall
+    from models import EmergencyCall, Doctor, Patient, Transaction
+    doctor = Doctor.query.get(doctor_id)
+    if not doctor:
+        return jsonify({'msg': 'Doctor not found'}), 404
+        
+    patient = Patient.query.get(identity['id'])
+    if not patient:
+        return jsonify({'msg': 'Patient not found'}), 404
+
+    fee = doctor.online_treatment_fee if doctor.online_treatment_fee is not None else 500
+    current_bal = float(patient.wallet_balance or 0.0)
+
+    # Check wallet balance
+    if current_bal < fee:
+        return jsonify({
+            'msg': f'Insufficient wallet balance (₹{current_bal:.2f}). Consultation fee is ₹{fee}. Please recharge your wallet.',
+            'insufficient_balance': True,
+            'fee_required': fee,
+            'current_balance': current_bal
+        }), 400
+
+    # Deduct fee from patient wallet
+    patient.wallet_balance = current_bal - fee
+    doctor.total_earnings = float(doctor.total_earnings or 0.0) + fee
+
+    tx_patient = Transaction(
+        patient_id=patient.patient_id,
+        amount=fee,
+        transaction_type='DEBIT',
+        description=f"Paid direct {call_type.capitalize()} consultation fee for Dr. {doctor.name}"
+    )
+    db.session.add(tx_patient)
+
+    tx_doctor = Transaction(
+        doctor_id=doctor.doctor_id,
+        amount=fee,
+        transaction_type='CREDIT',
+        description=f"Earnings from direct {call_type.capitalize()} consultation with {patient.name}"
+    )
+    db.session.add(tx_doctor)
+    
     for old_call in EmergencyCall.query.filter_by(patient_id=identity['id'], status='ringing').all():
         old_call.status = 'ended'
-    db.session.commit()
     
-    new_call = EmergencyCall(patient_id=identity['id'], doctor_id=doctor_id)
+    room_name = f"medai_consult_{identity['id']}_{doctor_id}_{int(datetime.utcnow().timestamp())}"
+    new_call = EmergencyCall(
+        patient_id=identity['id'],
+        doctor_id=doctor_id,
+        call_type=call_type,
+        fee_paid=fee,
+        status='ringing'
+    )
     db.session.add(new_call)
     db.session.commit()
     
     from extensions import socketio
-    from models import Patient
-    pat = Patient.query.get(identity['id'])
-    
     socketio.emit('incoming_call', {
         'callId': new_call.call_id,
-        'patientName': pat.name if pat else "A waiting patient",
-        'symptoms': "Emergency video consultation request",
-        'isEmergency': True
+        'patientName': patient.name,
+        'callType': call_type,
+        'roomName': room_name,
+        'symptoms': f"Direct {call_type.capitalize()} Consultation Request (Fee: ₹{fee})",
+        'isEmergency': False
     }, room=str(doctor_id))
     
-    return jsonify({'call_id': new_call.call_id}), 200
+    return jsonify({
+        'call_id': new_call.call_id,
+        'call_type': call_type,
+        'room_name': room_name,
+        'fee_deducted': fee,
+        'new_balance': patient.wallet_balance
+    }), 200
+
+@patient_bp.route('/cancel_call/<int:call_id>', methods=['POST'])
+@jwt_required()
+def patient_cancel_call(call_id):
+    from models import EmergencyCall, Doctor, Patient, Transaction
+    identity = json.loads(get_jwt_identity())
+    if identity['role'] != 'patient': return jsonify({'msg': 'Unauthorized'}), 403
+    call = EmergencyCall.query.filter_by(call_id=call_id, patient_id=identity['id']).first_or_404()
+    if call.status == 'ringing':
+        call.status = 'cancelled'
+        if getattr(call, 'fee_paid', 0) and call.fee_paid > 0:
+            patient = Patient.query.get(identity['id'])
+            doctor = Doctor.query.get(call.doctor_id)
+            if patient:
+                patient.wallet_balance = (patient.wallet_balance or 0.0) + call.fee_paid
+                if doctor:
+                    doctor.total_earnings = max(0.0, (doctor.total_earnings or 0.0) - call.fee_paid)
+                ref_tx = Transaction(
+                    patient_id=patient.patient_id,
+                    amount=call.fee_paid,
+                    transaction_type='CREDIT',
+                    description=f"Refund: Cancelled call to Dr. {doctor.name if doctor else 'Doctor'}"
+                )
+                db.session.add(ref_tx)
+            call.fee_paid = 0.0
+        db.session.commit()
+        from extensions import socketio
+        socketio.emit('call_answered', {'callId': call_id, 'status': 'cancelled'}, room=str(call.doctor_id))
+    return jsonify({'msg': 'Call cancelled'}), 200
 
 @patient_bp.route('/call_status/<int:call_id>', methods=['GET'])
 @jwt_required()
@@ -566,7 +653,7 @@ def call_status(call_id):
     identity = json.loads(get_jwt_identity())
     if identity['role'] != 'patient': return jsonify({'msg': 'Unauthorized'}), 403
     call = EmergencyCall.query.filter_by(call_id=call_id, patient_id=identity['id']).first_or_404()
-    return jsonify({'status': call.status}), 200
+    return jsonify({'status': call.status, 'call_type': getattr(call, 'call_type', 'video')}), 200
 
 @patient_bp.route('/accept_call/<int:call_id>', methods=['POST'])
 @jwt_required()

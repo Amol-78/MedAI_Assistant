@@ -16,7 +16,18 @@
             </a>
             <div class="ms-auto d-flex align-items-center">
                 <span class="badge bg-success me-3 py-2 px-3 shadow-sm" id="availabilityBadge"><i class="fas fa-circle ms-1 me-1 text-white" style="font-size:8px; vertical-align:middle;"></i> Available</span>
-                <span class="text-muted me-3 d-none d-md-block"><i class="fas fa-user-md me-1"></i> Doctor Portal</span>
+                
+                <!-- Doctor Profile Badge in Corner -->
+                <div class="d-flex align-items-center me-3" id="doctorHeaderProfile">
+                    <div class="position-relative me-2">
+                        <img id="doctorCornerAvatar" src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" alt="Doctor Avatar" class="rounded-circle shadow-sm border border-2 border-success" style="width: 38px; height: 38px; object-fit: cover;">
+                    </div>
+                    <div class="d-none d-md-block text-start lh-1">
+                        <div class="fw-bold text-dark small" id="doctorCornerName">Doctor</div>
+                        <small class="text-muted" style="font-size: 0.72rem;" id="doctorCornerSpec">Doctor Portal</small>
+                    </div>
+                </div>
+
                 <button class="btn btn-outline-danger btn-sm px-3 shadow-sm d-none d-md-inline-block me-2" onclick="logout('doctor')"><i class="fas fa-sign-out-alt me-1"></i> Logout</button>
                 <button class="btn btn-success d-md-none shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarCollapse">
                     <i class="fas fa-bars"></i>
@@ -29,8 +40,15 @@
         <div class="row">
             <!-- Sidebar -->
             <div class="col-md-3 sidebar collapse d-md-block shadow-sm" id="sidebarCollapse" style="z-index: 1040; height: calc(100vh - 65px); overflow-y: auto; position: sticky; top: 65px; padding: 1.5rem 1rem;">
-                <div class="list-group border-0 bg-transparent mb-auto pt-3 nav nav-pills flex-column" id="doctorTabs" role="tablist">
-                    <small style="color:var(--sidebar-text);" class="text-uppercase fw-bold px-3 mb-3" style="font-size: 0.75rem;">Doctor Portal</small>
+                <!-- Sidebar Profile Card -->
+                <div class="text-center p-3 mb-3 rounded-3" style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.2);">
+                    <img id="doctorSidebarAvatar" src="https://cdn-icons-png.flaticon.com/512/3774/3774299.png" class="rounded-circle shadow-sm border border-2 border-success mb-2" style="width: 64px; height: 64px; object-fit: cover;">
+                    <h6 class="fw-bold text-dark mb-0" id="doctorSidebarName">Doctor</h6>
+                    <small class="text-success fw-bold" id="doctorSidebarSpec">Specialist</small>
+                </div>
+
+                <div class="list-group border-0 bg-transparent mb-auto pt-2 nav nav-pills flex-column" id="doctorTabs" role="tablist">
+                    <small style="color:var(--sidebar-text);" class="text-uppercase fw-bold px-3 mb-3" style="font-size: 0.75rem;">Navigation</small>
                     
                     <button class="sidebar-link mb-2 border-0 rounded active text-start fw-bold bg-transparent" id="reports-tab" data-bs-toggle="tab" data-bs-target="#reports" type="button" onclick="closeSidebarMobile()"><i class="fas fa-file-medical me-2"></i> Pending Reports</button>
                     <button class="sidebar-link mb-2 border-0 rounded text-start fw-bold bg-transparent" id="appointments-tab" data-bs-toggle="tab" data-bs-target="#appointments" type="button" onclick="closeSidebarMobile()"><i class="fas fa-calendar-alt me-2"></i> Appointments</button>

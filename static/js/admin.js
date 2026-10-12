@@ -44,21 +44,32 @@ async function loadDoctors() {
             tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No doctors registered.</td></tr>';
             return;
         }
-        tbody.innerHTML = doctors.map(d => `
+        tbody.innerHTML = doctors.map(d => {
+            const avatar = d.profile_picture ? 
+                `<img src="/static/uploads/${d.profile_picture}" class="rounded-circle me-2 shadow-sm border" style="width:34px;height:34px;object-fit:cover;">` :
+                `<div class="bg-primary bg-opacity-10 text-primary rounded-circle d-inline-flex align-items-center justify-content-center fw-bold me-2" style="width:34px;height:34px;font-size:0.85rem;">${(d.name||'D').charAt(0).toUpperCase()}</div>`;
+            const fee = d.online_treatment_fee != null ? d.online_treatment_fee : 500;
+            return `
             <tr>
                 <td class="fw-bold">#${d.doctor_id}</td>
-                <td><a href="#" class="text-primary text-decoration-none fw-bold" onclick="showDoctorProfile(${d.doctor_id}); return false;">${d.name}</a></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        ${avatar}
+                        <a href="#" class="text-primary text-decoration-none fw-bold" onclick="showDoctorProfile(${d.doctor_id}); return false;">Dr. ${d.name}</a>
+                    </div>
+                </td>
                 <td><span class="badge bg-light text-dark border">${d.specialization}</span></td>
                 <td>${d.email}</td>
                 <td>${d.phone}</td>
+                <td class="fw-bold text-success">₹${fee}</td>
                 <td><i class="fas fa-circle ${d.available ? 'text-success' : 'text-danger'} me-2" style="font-size: 10px;"></i>${d.available ? 'Active' : 'Offline'}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-info shadow-sm me-1" onclick="showDoctorProfile(${d.doctor_id})"><i class="fas fa-eye"></i></button>
-                    <button class="btn btn-sm btn-outline-primary shadow-sm me-1" onclick="editDoctor(${d.doctor_id}, '${d.name.replace(/'/g,"\\'")}', '${d.specialization}', '${d.email}', '${d.phone}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-primary shadow-sm me-1" onclick="editDoctor(${d.doctor_id}, '${d.name.replace(/'/g,"\\'")}', '${d.specialization}', '${d.email}', '${d.phone}', ${fee})"><i class="fas fa-edit"></i></button>
                     <button class="btn btn-sm btn-outline-danger shadow-sm" onclick="deleteDoctor(${d.doctor_id})"><i class="fas fa-trash"></i></button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     } catch(e) { console.error(e); }
 }
 
@@ -70,22 +81,25 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-function editDoctor(id, name, specialization, email, phone) {
+function editDoctor(id, name, specialization, email, phone, fee) {
     document.getElementById('editDoctorId').value = id;
     document.getElementById('editName').value = name;
     document.getElementById('editSpecialization').value = specialization;
     document.getElementById('editEmail').value = email;
     document.getElementById('editPhone').value = phone;
+    document.getElementById('editFee').value = fee || 500;
     new bootstrap.Modal(document.getElementById('editDoctorModal')).show();
 }
 
 async function updateDoctor() {
     const id = document.getElementById('editDoctorId').value;
+    const feeVal = parseInt(document.getElementById('editFee').value);
     const data = {
         name: document.getElementById('editName').value,
         specialization: document.getElementById('editSpecialization').value,
         email: document.getElementById('editEmail').value,
-        phone: document.getElementById('editPhone').value
+        phone: document.getElementById('editPhone').value,
+        online_treatment_fee: isNaN(feeVal) ? 500 : feeVal
     };
     const btn = document.querySelector("#editDoctorModal .btn-primary");
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -156,11 +170,25 @@ async function loadRequests() {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No pending requests.</td></tr>';
             return;
         }
-        tbody.innerHTML = reqs.map(r => `
+        tbody.innerHTML = reqs.map(r => {
+            const reqAvatar = r.profile_picture ?
+                `<img src="/static/uploads/${r.profile_picture}" class="rounded-circle me-2 shadow-sm border" style="width:34px;height:34px;object-fit:cover;">` :
+                `<div class="bg-secondary bg-opacity-10 text-secondary rounded-circle d-inline-flex align-items-center justify-content-center fw-bold me-2" style="width:34px;height:34px;font-size:0.85rem;"><i class="fas fa-user-md"></i></div>`;
+            return `
             <tr>
                 <td class="fw-bold">#${r.request_id}</td>
-                <td><i class="fas fa-user-md text-secondary me-2"></i>${r.name}</td>
-                <td><span class="badge bg-light text-dark border">${r.specialization}</span></td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        ${reqAvatar}
+                        <div>
+                            <span class="fw-bold text-dark d-block">Dr. ${r.name}</span>
+                            ${r.age ? `<small class="text-muted">${r.age} yrs, ${r.gender || ''}</small>` : ''}
+                        </div>
+                    </div>
+                <td>
+                    <span class="badge bg-light text-dark border d-block mb-1">${r.specialization}</span>
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success">₹${r.online_treatment_fee != null ? r.online_treatment_fee : 500} Fee</span>
+                </td>
                 <td><small class="text-muted d-block">${r.education}</small><small>${r.experience_years} yrs exp</small></td>
                 <td><small class="d-block"><i class="fas fa-envelope me-1"></i>${r.email}</small><small><i class="fas fa-phone me-1"></i>${r.phone}</small></td>
                 <td><small class="text-muted">${r.created_at}</small></td>
@@ -168,8 +196,8 @@ async function loadRequests() {
                     <button class="btn btn-sm btn-success shadow-sm me-1" onclick="approveRequest(${r.request_id})" title="Approve Request"><i class="fas fa-check"></i> Approve</button>
                     <button class="btn btn-sm btn-outline-danger shadow-sm" onclick="rejectRequest(${r.request_id})" title="Reject Request"><i class="fas fa-times"></i></button>
                 </td>
-            </tr>
-        `).join('');
+            </tr>`;
+        }).join('');
     } catch(e) { console.error(e); }
 }
 
@@ -277,7 +305,10 @@ async function showDoctorProfile(id) {
         const stats = data.work_summary;
         const rating = data.feedback_stats;
         
-        document.getElementById('profileDocName').innerHTML = `<i class="fas fa-user-md me-2"></i>Dr. ${info.name}`;
+        const picHtml = info.profile_picture 
+            ? `<img src="${info.profile_picture}" class="rounded-circle me-2 border" style="width: 36px; height: 36px; object-fit: cover;">`
+            : `<i class="fas fa-user-md me-2"></i>`;
+        document.getElementById('profileDocName').innerHTML = `${picHtml}Dr. ${info.name}`;
         
         let casesHTML = data.cases.length === 0 ? '<p class="text-muted text-center py-3">No patient cases assigned yet.</p>' : data.cases.map(c => `
             <div class="card border-0 border-bottom mb-2 bg-transparent shadow-none">
@@ -313,7 +344,13 @@ async function showDoctorProfile(id) {
                     <div class="col-md-6">
                         <div class="card bg-primary text-white border-0 shadow-sm h-100" style="border-radius: 12px;">
                             <div class="card-body p-4">
-                                <h6><i class="fas fa-stethoscope me-2"></i> ${info.specialization}</h6>
+                                <div class="d-flex align-items-center mb-3">
+                                    ${info.profile_picture ? `<img src="${info.profile_picture}" class="rounded-circle me-3 border border-2 border-white shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">` : `<div class="rounded-circle bg-white text-primary d-flex align-items-center justify-content-center me-3" style="width: 50px; height: 50px; font-weight: bold; font-size: 1.2rem;">${info.name.charAt(0)}</div>`}
+                                    <div>
+                                        <h5 class="mb-0 fw-bold">Dr. ${info.name}</h5>
+                                        <small class="text-white-50"><i class="fas fa-stethoscope me-1"></i> ${info.specialization}</small>
+                                    </div>
+                                </div>
                                 <p class="mb-1"><i class="fas fa-envelope me-2"></i> ${info.email}</p>
                                 <p class="mb-1"><i class="fas fa-phone me-2"></i> ${info.phone}</p>
                                 <hr class="border-light opacity-25">

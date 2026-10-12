@@ -98,16 +98,14 @@ document.addEventListener('DOMContentLoaded', () => {
             btn.disabled = true;
 
             const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
 
             try {
                 const res = await fetch('/admin/doctor', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify(data)
+                    body: formData
                 });
                 const result = await res.json();
                 if (res.ok) {

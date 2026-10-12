@@ -68,13 +68,14 @@
                                     <th>Specialization</th>
                                     <th>Email</th>
                                     <th>Phone</th>
+                                    <th>Fee</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="doctorTableBody">
                                 <tr>
-                                    <td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>
+                                    <td colspan="8" class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>
                                         Loading...</td>
                                 </tr>
                             </tbody>
@@ -184,6 +185,10 @@
                         <label class="form-label text-muted fw-bold">Phone</label>
                         <input type="tel" class="form-control" id="editPhone">
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted fw-bold">Online Treatment Fee (₹)</label>
+                        <input type="number" class="form-control" id="editFee" min="0" placeholder="e.g. 500">
+                    </div>
                 </div>
                 <div class="modal-footer border-0 pb-3">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
@@ -283,7 +288,7 @@
             }
         }
     </script>
-    <script src="/static/js/admin.js?v=7"></script>
+    <script src="/static/js/admin.js?v=8"></script>
 </body>
 
 </html>

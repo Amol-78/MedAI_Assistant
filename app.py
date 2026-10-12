@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from config import Config
-from models import db, bcrypt, Patient, Doctor, Admin, PatientReport, Appointment
+from models import db, bcrypt, Patient, Doctor, Admin, PatientReport, Appointment, upgrade_schema
 from extensions import socketio
 from auth import auth_bp
 from admin import admin_bp
@@ -24,6 +24,9 @@ db.init_app(app)
 bcrypt.init_app(app)
 jwt = JWTManager(app)
 CORS(app)
+
+with app.app_context():
+    upgrade_schema(app)
 
 # Initialize Socket.IO
 socketio.init_app(app)

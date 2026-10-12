@@ -47,10 +47,10 @@ if (socket) {
         }
     });
 
-    // Directly bind to instantaneous doctor responses removing 2-second REST-ping delays
+    // Directly bind to instantaneous doctor responses
     socket.on('call_answered', (data) => {
-        if (data.callId && data.callId === window.currentCallId) {
-            checkCallStatus(data.callId); // Handshakes directly with backend validator upon event trigger
+        if (data.callId && data.callId === activeDirectCallId) {
+            handleCallAnsweredEvent(data);
         }
     });
 
@@ -800,22 +800,41 @@ async function searchDoctors() {
 
         let html = '';
         doctors.forEach(d => {
+            const avatarHtml = d.profile_picture ? 
+                `<img src="/static/uploads/${d.profile_picture}" alt="${d.name}" class="rounded-circle shadow-sm" style="width:58px;height:58px;object-fit:cover;border:2px solid var(--primary);">` :
+                `<div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style="width:58px;height:58px;font-size:1.4rem;border:2px solid var(--primary);">${(d.name||'D').charAt(0).toUpperCase()}</div>`;
+
             html += `
             <div class="col-md-6 col-lg-4 mb-4 fade-in">
                 <div class="card h-100 shadow-sm border-0 glass-card transition-hover">
                     <div class="card-body d-flex flex-column text-start">
-                        <div class="d-flex justify-content-between align-items-start mb-1">
-                            <h5 class="card-title text-dark fw-bold mb-0">Dr. ${d.name}</h5>
-                            <span class="badge bg-warning text-dark shadow-sm"><i class="fas fa-star text-dark"></i> ${d.rating}</span>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3 position-relative flex-shrink-0">
+                                ${avatarHtml}
+                            </div>
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <h5 class="card-title text-dark fw-bold mb-0 text-truncate">Dr. ${d.name}</h5>
+                                    <span class="badge bg-warning text-dark shadow-sm ms-2"><i class="fas fa-star text-dark"></i> ${d.rating}</span>
+                                </div>
+                                <p class="text-primary fw-bold small mb-0 text-truncate"><i class="fas fa-stethoscope me-1"></i> ${d.specialization}</p>
+                            </div>
                         </div>
-                        <p class="text-primary fw-bold small mb-3"><i class="fas fa-stethoscope me-1"></i> ${d.specialization}</p>
                         <hr class="mt-0 mb-3 opacity-25">
                         <div class="mb-3">
                             <p class="text-muted small fw-medium mb-2"><i class="fas fa-briefcase me-2 text-secondary"></i> ${d.experience_years} Years Experience</p>
                             <p class="text-success small fw-bold mb-0"><i class="fas fa-rupee-sign me-1"></i> ${d.online_treatment_fee} Consultation Fee</p>
                         </div>
-                        <div class="mt-auto">
-                            <button class="btn btn-outline-primary btn-sm w-100 fw-bold py-2 rounded-3 shadow-sm" onclick="viewDoctorProfile(${d.doctor_id})"><i class="fas fa-user-md me-2"></i> View Full Profile</button>
+                        <div class="mt-auto d-flex flex-column gap-2">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-primary btn-sm flex-fill fw-bold py-2 rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-1" onclick="startDirectDoctorCall(${d.doctor_id}, '${d.name.replace(/'/g, "\\'")}', 'video')" title="Direct Video Call">
+                                    <i class="fas fa-video text-danger"></i> Video Call
+                                </button>
+                                <button class="btn btn-outline-success btn-sm flex-fill fw-bold py-2 rounded-3 shadow-sm d-flex align-items-center justify-content-center gap-1" onclick="startDirectDoctorCall(${d.doctor_id}, '${d.name.replace(/'/g, "\\'")}', 'audio')" title="Direct Audio Call">
+                                    <i class="fas fa-phone-alt text-success"></i> Audio Call
+                                </button>
+                            </div>
+                            <button class="btn btn-light btn-sm w-100 fw-bold py-2 rounded-3 border text-secondary" onclick="viewDoctorProfile(${d.doctor_id})"><i class="fas fa-user-md me-1"></i> View Full Profile</button>
                         </div>
                     </div>
                 </div>
@@ -859,14 +878,16 @@ async function viewDoctorProfile(id) {
             });
         }
 
+        const modalAvatarHtml = d.profile_picture ? 
+            `<img src="/static/uploads/${d.profile_picture}" alt="${d.name}" class="rounded-circle shadow mb-2" style="width:90px;height:90px;object-fit:cover;border:3px solid var(--primary);">` :
+            `<div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2 shadow" style="width:80px;height:80px;font-size:2rem;"><i class="fas fa-user-md"></i></div>`;
+
         content.innerHTML = `
         <div class="row">
             <div class="col-md-5 border-end">
                 <div class="text-center mb-3">
-                    <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-2 shadow" style="width:80px;height:80px;font-size:2rem;">
-                        <i class="fas fa-user-md"></i>
-                    </div>
-                    <h4 class="mb-0 text-dark">Dr. ${d.name}</h4>
+                    ${modalAvatarHtml}
+                    <h4 class="mb-0 text-dark fw-bold">Dr. ${d.name}</h4>
                     <span class="text-primary fw-bold">${d.specialization}</span>
                 </div>
                 <hr>
@@ -874,9 +895,20 @@ async function viewDoctorProfile(id) {
                 <p class="mb-2"><small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.75rem;"><i class="fas fa-briefcase me-1"></i> Experience</small><strong>${d.experience_years} Years</strong></p>
                 <p class="mb-2"><small class="text-muted d-block text-uppercase fw-bold" style="font-size:0.75rem;"><i class="fas fa-rupee-sign me-1"></i> Fee</small><strong class="text-success">₹${d.online_treatment_fee}</strong></p>
                 
-                <div class="mt-4 p-3 bg-light rounded text-center border">
+                <div class="mt-3 p-3 bg-light rounded text-center border">
                     <h4 class="text-warning mb-0"><i class="fas fa-star me-1"></i> ${d.rating} <small class="text-muted" style="font-size:0.9rem;">/ 5.0</small></h4>
                     <p class="text-muted small mb-0 mt-1">Based on ${d.total_reviews} verified reviews</p>
+                </div>
+
+                <div class="mt-3 d-flex flex-column gap-2">
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-primary btn-sm flex-fill fw-bold py-2 rounded-3 shadow-sm" onclick="startDirectDoctorCall(${d.doctor_id}, '${d.name.replace(/'/g, "\\'")}', 'video'); docModalObj.hide();">
+                            <i class="fas fa-video text-danger me-1"></i> Video Call
+                        </button>
+                        <button class="btn btn-outline-success btn-sm flex-fill fw-bold py-2 rounded-3 shadow-sm" onclick="startDirectDoctorCall(${d.doctor_id}, '${d.name.replace(/'/g, "\\'")}', 'audio'); docModalObj.hide();">
+                            <i class="fas fa-phone-alt text-success me-1"></i> Audio Call
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="col-md-7 px-4 pt-3 pt-md-0" style="max-height:450px; overflow-y:auto;">
@@ -1503,6 +1535,69 @@ async function handleDoctorCallResponse(callId, accepted) {
     }
 }
 
+window.currentCallType = 'video';
+
+async function startDirectDoctorCall(doctorId, doctorName, callType = 'video') {
+    window.currentCallType = callType;
+    const isAudio = (callType === 'audio');
+    const content = document.getElementById('content');
+    content.innerHTML = `
+        <div class="d-flex flex-column align-items-center justify-content-center py-5 fade-in text-center" style="min-height: 60vh;">
+            <div class="mb-4 position-relative">
+                <div class="spinner-grow ${isAudio ? 'text-success' : 'text-primary'}" style="width: 5.5rem; height: 5.5rem;" role="status"></div>
+                <div class="position-absolute top-50 start-50 translate-middle">
+                    <i class="fas ${isAudio ? 'fa-phone-alt text-success' : 'fa-video text-primary'} fa-2x"></i>
+                </div>
+            </div>
+            <span class="badge ${isAudio ? 'bg-success' : 'bg-primary'} px-3 py-2 rounded-pill fw-bold text-uppercase mb-2 shadow-sm" style="letter-spacing:1px;">
+                <i class="fas ${isAudio ? 'fa-phone' : 'fa-video'} me-1"></i> Direct ${isAudio ? 'Audio' : 'Video'} Call
+            </span>
+            <h2 class="text-dark fw-bold mb-2">Connecting to Dr. ${doctorName}...</h2>
+            <p class="text-muted mb-4" style="max-width: 450px;">
+                Ringing doctor's portal now. The secure call line is established instantly once the doctor answers.
+            </p>
+            <div class="d-flex flex-wrap justify-content-center gap-3">
+                <button class="btn btn-outline-danger shadow-sm px-4 py-2 fw-bold rounded-pill" onclick="cancelDirectCall()">
+                    <i class="fas fa-phone-slash me-2"></i> End Call
+                </button>
+                <button class="btn btn-success shadow-sm px-4 py-2 fw-bold rounded-pill" onclick="forceJoinDirectCall()">
+                    <i class="fas ${isAudio ? 'fa-microphone' : 'fa-video'} me-2"></i> Connect Room Directly
+                </button>
+            </div>
+        </div>
+    `;
+
+    try {
+        const res = await fetch('/patient/initiate_call', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ doctor_id: doctorId, call_type: callType })
+        });
+        if (res.status === 401 || res.status === 422) { logout(); return; }
+        const data = await res.json();
+        window.currentCallId = data.call_id;
+        if (callPollingInterval) clearInterval(callPollingInterval);
+        callPollingInterval = setInterval(() => checkCallStatus(data.call_id), 2000);
+    } catch (e) {
+        alert("Failed to initiate call with doctor.");
+        loadPage('search');
+    }
+}
+
+function cancelDirectCall() {
+    if (callPollingInterval) clearInterval(callPollingInterval);
+    loadPage('search');
+}
+
+function forceJoinDirectCall() {
+    if (callPollingInterval) clearInterval(callPollingInterval);
+    if (window.currentCallId) {
+        startJitsiCall('MedAI-Room-' + window.currentCallId, window.currentCallType || 'video');
+    } else {
+        startJitsiCall('MedAI-Room-' + Date.now(), window.currentCallType || 'video');
+    }
+}
+
 async function checkCallStatus(callId) {
     try {
         const res = await fetch(`/patient/call_status/${callId}`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1511,7 +1606,7 @@ async function checkCallStatus(callId) {
 
         if (data.status === 'accepted') {
             if (callPollingInterval) clearInterval(callPollingInterval);
-            startJitsiCall('MedAI-Room-' + callId);
+            startJitsiCall('MedAI-Room-' + callId, data.call_type || window.currentCallType || 'video');
         } else if (data.status === 'rejected' || data.status === 'ended') {
             if (callPollingInterval) clearInterval(callPollingInterval);
             document.getElementById('content').innerHTML = `
@@ -1521,8 +1616,8 @@ async function checkCallStatus(callId) {
                     </div>
                     <h3 class="text-danger fw-bold mb-2">Call Ended / Declined</h3>
                     <p class="text-muted mb-4">The doctor is unavailable or declined the call.</p>
-                    <button class="btn btn-primary shadow-sm px-4 fw-bold" onclick="loadPage('history')">
-                        <i class="fas fa-arrow-left me-2"></i> Return to History
+                    <button class="btn btn-primary shadow-sm px-4 fw-bold" onclick="loadPage('search')">
+                        <i class="fas fa-arrow-left me-2"></i> Return to Doctors
                     </button>
                 </div>
             `;
@@ -1598,18 +1693,276 @@ async function showAddMoneyDialog() {
     }
 }
 
-function cancelCall() {
-    if (callPollingInterval) clearInterval(callPollingInterval);
-    loadPage('emergency');
+// --- Direct Doctor Video/Audio Calling System with Wallet Fee Deduction ---
+let activeDirectCallId = null;
+let activeDirectCallPolling = null;
+let activeDirectCallRoom = null;
+let activeDirectCallType = 'video';
+let activeDirectDoctorName = '';
+let activeDirectCallFee = 0;
+
+async function startDirectDoctorCall(doctorId, doctorName, callType = 'video') {
+    activeDirectCallType = callType;
+    activeDirectDoctorName = doctorName;
+    const isAudio = (callType === 'audio');
+    
+    // Create or locate calling modal
+    let modalEl = document.getElementById('patientDirectCallingModal');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'patientDirectCallingModal';
+        modalEl.className = 'modal fade';
+        modalEl.setAttribute('tabindex', '-1');
+        modalEl.setAttribute('data-bs-backdrop', 'static');
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px; overflow: hidden;">
+                    <div class="modal-header border-0 text-white text-center py-4" id="directCallModalHeader">
+                        <div class="w-100">
+                            <div class="rounded-circle bg-white text-primary mx-auto mb-3 d-flex align-items-center justify-content-center shadow" style="width: 70px; height: 70px; font-size: 2rem;">
+                                <i id="directCallIcon" class="fas fa-video"></i>
+                            </div>
+                            <h4 class="modal-title fw-bold text-white mb-1" id="directCallDoctorName">Dr. Doctor Name</h4>
+                            <span class="badge bg-light text-primary px-3 py-2 fw-bold text-uppercase" id="directCallBadge">Video Call</span>
+                        </div>
+                    </div>
+                    <div class="modal-body text-center p-4">
+                        <div class="alert alert-success d-inline-flex align-items-center mb-3 px-3 py-2 shadow-sm" id="directCallFeeAlert">
+                            <i class="fas fa-wallet me-2"></i>
+                            <span id="directCallFeeText" class="fw-bold">Fee: ₹500 Deducted from Wallet</span>
+                        </div>
+                        <p class="text-muted fw-bold mb-3" id="directCallStatusText"><i class="fas fa-spinner fa-spin me-2 text-primary"></i> Connecting call...</p>
+                        <div class="d-flex justify-content-center gap-3">
+                            <button type="button" class="btn btn-outline-danger px-4 py-2 fw-bold rounded-pill shadow-sm" id="directCallCancelBtn" onclick="cancelDirectDoctorCall()">
+                                <i class="fas fa-phone-slash me-1"></i> Cancel Call & Refund
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    // Set UI details
+    document.getElementById('directCallDoctorName').innerText = `Dr. ${doctorName}`;
+    document.getElementById('directCallIcon').className = isAudio ? 'fas fa-phone-alt text-success' : 'fas fa-video text-primary';
+    document.getElementById('directCallBadge').innerText = isAudio ? 'Audio Call' : 'Video Call';
+    document.getElementById('directCallBadge').className = `badge ${isAudio ? 'bg-success' : 'bg-primary'} text-white px-3 py-2 fw-bold text-uppercase`;
+    document.getElementById('directCallModalHeader').className = `modal-header border-0 ${isAudio ? 'bg-success' : 'bg-primary'} text-white text-center py-4`;
+    document.getElementById('directCallStatusText').innerHTML = '<i class="fas fa-spinner fa-spin me-2 text-primary"></i> Checking wallet and contacting server...';
+    document.getElementById('directCallFeeAlert').style.display = 'none';
+
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    try {
+        const res = await fetch('/patient/initiate_call', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ doctor_id: doctorId, call_type: callType })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            bsModal.hide();
+            if (data.insufficient_balance) {
+                const addFunds = confirm(`❌ Insufficient Wallet Balance!\n\nDoctor Consultation Fee: ₹${data.fee_required}\nYour Current Balance: ₹${parseFloat(data.current_balance).toFixed(2)}\n\nWould you like to recharge your wallet now?`);
+                if (addFunds) {
+                    loadPage('wallet');
+                }
+            } else {
+                alert(data.msg || "Failed to initiate call.");
+            }
+            return;
+        }
+
+        activeDirectCallId = data.call_id;
+        activeDirectCallRoom = data.room_name;
+        activeDirectCallFee = data.fee_deducted;
+
+        document.getElementById('directCallFeeAlert').style.display = 'inline-flex';
+        document.getElementById('directCallFeeText').innerText = `Fee: ₹${data.fee_deducted} Deducted from Wallet`;
+        document.getElementById('directCallStatusText').innerHTML = `<i class="fas fa-phone-volume fa-shake me-2 ${isAudio ? 'text-success' : 'text-primary'}"></i> Calling Dr. ${doctorName}... Waiting for doctor to accept.`;
+
+        // Start polling call status
+        if (activeDirectCallPolling) clearInterval(activeDirectCallPolling);
+        activeDirectCallPolling = setInterval(async () => {
+            if (!activeDirectCallId) {
+                clearInterval(activeDirectCallPolling);
+                return;
+            }
+            try {
+                const statusRes = await fetch(`/patient/call_status/${activeDirectCallId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (statusRes.ok) {
+                    const statusData = await statusRes.json();
+                    if (statusData.status === 'accepted') {
+                        clearInterval(activeDirectCallPolling);
+                        activeDirectCallPolling = null;
+                        const roomToJoin = activeDirectCallRoom || `medai_consult_${activeDirectCallId}_${doctorId}`;
+                        activeDirectCallId = null;
+                        bsModal.hide();
+                        startJitsiCall(roomToJoin, callType);
+                    } else if (statusData.status === 'rejected') {
+                        clearInterval(activeDirectCallPolling);
+                        activeDirectCallPolling = null;
+                        activeDirectCallId = null;
+                        bsModal.hide();
+                        alert(`Dr. ${doctorName} is currently unavailable or declined the call.\n\nYour consultation fee of ₹${data.fee_deducted} has been refunded to your wallet.`);
+                        if (document.getElementById('walletBalance')) loadWallet();
+                    }
+                }
+            } catch (err) {
+                console.error("Status polling error", err);
+            }
+        }, 2000);
+
+    } catch (e) {
+        bsModal.hide();
+        alert("Failed to initiate call. Please check your network connection.");
+    }
 }
 
-function startJitsiCall(roomName) {
+function handleCallAnsweredEvent(data) {
+    if (activeDirectCallPolling) {
+        clearInterval(activeDirectCallPolling);
+        activeDirectCallPolling = null;
+    }
+    const modalEl = document.getElementById('patientDirectCallingModal');
+    if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+    if (data.status === 'accepted') {
+        const roomToJoin = activeDirectCallRoom || `medai_consult_${activeDirectCallId}`;
+        const callType = activeDirectCallType;
+        activeDirectCallId = null;
+        startJitsiCall(roomToJoin, callType);
+    } else if (data.status === 'rejected') {
+        const fee = activeDirectCallFee;
+        const name = activeDirectDoctorName;
+        activeDirectCallId = null;
+        alert(`Dr. ${name} declined the call.\n\nYour consultation fee of ₹${fee} has been refunded to your wallet.`);
+        if (document.getElementById('walletBalance')) loadWallet();
+    }
+}
+
+async function cancelDirectDoctorCall() {
+    if (activeDirectCallPolling) {
+        clearInterval(activeDirectCallPolling);
+        activeDirectCallPolling = null;
+    }
+    const modalEl = document.getElementById('patientDirectCallingModal');
+    if (modalEl) {
+        const bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) bsModal.hide();
+    }
+    if (activeDirectCallId) {
+        const callIdToCancel = activeDirectCallId;
+        const fee = activeDirectCallFee;
+        activeDirectCallId = null;
+        try {
+            await fetch(`/patient/cancel_call/${callIdToCancel}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            alert(`Call cancelled. Your fee of ₹${fee} has been refunded to your wallet.`);
+            if (document.getElementById('walletBalance')) loadWallet();
+        } catch (e) {
+            console.error(e);
+        }
+    }
+}
+
+function showDoctorCallModal(data) {
+    const isAudio = (data.callType === 'audio');
+    let incModal = document.getElementById('incomingDoctorCallModal');
+    if (!incModal) {
+        incModal = document.createElement('div');
+        incModal.id = 'incomingDoctorCallModal';
+        incModal.className = 'modal fade';
+        incModal.setAttribute('tabindex', '-1');
+        incModal.setAttribute('data-bs-backdrop', 'static');
+        incModal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+                    <div class="modal-header border-0 bg-primary text-white text-center py-4">
+                        <div class="w-100">
+                            <h4 class="modal-title fw-bold text-white mb-1"><i class="fas fa-stethoscope me-2"></i> Incoming Call from Doctor</h4>
+                        </div>
+                    </div>
+                    <div class="modal-body text-center p-4">
+                        <h4 class="fw-bold text-dark" id="incDoctorName">Dr. Doctor Name</h4>
+                        <p class="text-muted" id="incDoctorMsg">Doctor is inviting you to a live consultation.</p>
+                        <div class="d-flex justify-content-center gap-3 mt-4">
+                            <button type="button" class="btn btn-danger px-4 py-2 fw-bold rounded-pill" onclick="rejectDoctorIncomingCall()">
+                                <i class="fas fa-phone-slash me-1"></i> Decline
+                            </button>
+                            <button type="button" class="btn btn-success px-4 py-2 fw-bold rounded-pill" onclick="acceptDoctorIncomingCall()">
+                                <i class="fas fa-phone me-1"></i> Answer Call
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(incModal);
+    }
+    document.getElementById('incDoctorName').innerText = data.doctorName || 'Your Doctor';
+    window.incomingCallData = data;
+    const bs = new bootstrap.Modal(incModal);
+    bs.show();
+}
+
+async function acceptDoctorIncomingCall() {
+    const data = window.incomingCallData;
+    const incModal = document.getElementById('incomingDoctorCallModal');
+    if (incModal) {
+        const bs = bootstrap.Modal.getInstance(incModal);
+        if (bs) bs.hide();
+    }
+    if (data && data.callId) {
+        try {
+            await fetch(`/patient/accept_call/${data.callId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (e) {}
+        startJitsiCall(`medai_consult_${data.callId}_${data.doctorId}`, data.callType || 'video');
+    }
+}
+
+async function rejectDoctorIncomingCall() {
+    const data = window.incomingCallData;
+    const incModal = document.getElementById('incomingDoctorCallModal');
+    if (incModal) {
+        const bs = bootstrap.Modal.getInstance(incModal);
+        if (bs) bs.hide();
+    }
+    if (data && data.callId) {
+        try {
+            await fetch(`/patient/reject_call/${data.callId}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+        } catch (e) {}
+    }
+}
+
+function startJitsiCall(roomName, callType = 'video') {
+    window.currentCallType = callType;
+    const isAudio = (callType === 'audio');
     const content = document.getElementById('content');
     content.innerHTML = `
         <div class="card shadow-sm border-0 mb-4 bg-dark text-white rounded">
-            <div class="card-header border-0 bg-danger d-flex justify-content-between align-items-center">
-                <h5 class="mb-0 fw-bold"><i class="fas fa-video me-2"></i> Live Emergency Consultation</h5>
-                <button class="btn btn-light btn-sm shadow-sm fw-bold text-danger" onclick="endJitsiCall()"><i class="fas fa-phone-slash me-1"></i> End Call</button>
+            <div class="card-header border-0 ${isAudio ? 'bg-success' : 'bg-primary'} d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0 fw-bold text-white"><i class="fas ${isAudio ? 'fa-phone-alt' : 'fa-video'} me-2"></i> Live Consultation (${isAudio ? 'Audio Only' : 'Video'})</h5>
+                <button class="btn btn-light btn-sm shadow-sm fw-bold ${isAudio ? 'text-success' : 'text-danger'} px-3" onclick="endJitsiCall()"><i class="fas fa-phone-slash me-1"></i> End Call</button>
             </div>
             <div id="jitsi-container" style="width: 100%; height: 65vh; background: #000;"></div>
         </div>
@@ -1620,12 +1973,13 @@ function startJitsiCall(roomName) {
         width: '100%',
         height: '100%',
         parentNode: document.getElementById('jitsi-container'),
-        userInfo: { displayName: 'MedAI Patient' }
+        userInfo: { displayName: 'MedAI Patient' },
+        configOverwrite: isAudio ? { startAudioOnly: true, startWithVideoMuted: true } : {}
     };
     window.jitsiApi = new JitsiMeetExternalAPI(domain, options);
 }
 
 function endJitsiCall() {
     if (window.jitsiApi) window.jitsiApi.dispose();
-    loadPage('history');
+    loadPage('search');
 }
